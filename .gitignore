@@ -8,11 +8,6 @@ bin
 
 # idea
 out
-*.ipr
-*.iws
-*.iml
-/.idea/*
-!/.idea/artifacts
 
 # gradle
 build
