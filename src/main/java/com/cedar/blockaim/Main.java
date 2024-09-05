@@ -10,20 +10,19 @@ import net.minecraftforge.fml.common.event.FMLInitializationEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.InputEvent;
 
-import static com.cedar.blockaim.ConfigurationFile.cedarConfig;
-
 @Mod(modid = Main.MODID, version = Main.VERSION)
 public class Main
 {
     public static KeyBinding toggleAimKey;
     private ConfigurationFile configurationFile;
     public static final String MODID = "BlockAim";
-    public static final String VERSION = "1.1";
+    public static final String VERSION = "1.1.3";
+
     @EventHandler
-    public void init(FMLInitializationEvent event)
+    public void load(FMLInitializationEvent event)
     {
         ConfigurationFile.init("config/cedar/config.cfg");
-        toggleAimKey = new KeyBinding("§eAimBlock", 0, "§l§a雪松BlockAim");
+        toggleAimKey = new KeyBinding("§eAimBlock", 0, "Cedar雪松的模组");
         MinecraftForge.EVENT_BUS.register(new CommandCedarHelper());
         MinecraftForge.EVENT_BUS.register(new KeyInputHandler());
         MinecraftForge.EVENT_BUS.register(new WorldEventHandler());
