@@ -7,3 +7,9 @@
 ## How to use 怎么用
 1. 使用 /cedar 查看指令帮助文档
 1. 在设置控制里可以绑定瞄准按键
+
+------------
+
+视频演示Video:
+https://www.bilibili.com/video/BV1qbpMevEvV
+"我的世界方块智能瞄准 1.8.9 CedarBlockAim R1.1.2"
