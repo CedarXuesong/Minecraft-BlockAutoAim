@@ -16,3 +16,6 @@ build
 # other
 eclipse
 run
+/1mod.ipr
+/1mod.iws
+/CedarBlockAim.iml
