@@ -1,0 +1,15 @@
+[
+  {
+    "modid": "BlockAim",
+    "name": "CedarBlockAim",
+    "description": "自动瞄准设置的特定方块",
+    "version": "R1.1",
+    "mcversion": "1.8.9",
+    "url": "https://space.bilibili.com/473773611",
+    "updateUrl": "",
+    "authorList": ["Cedar雪松"],
+    "credits": "LOVE ❤",
+    "logoFile": "assets/blockaim/Cedar.jpg",
+    "useDependencyInformation": true
+  }
+]
