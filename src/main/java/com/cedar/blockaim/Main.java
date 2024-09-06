@@ -27,11 +27,10 @@ public class Main
         MinecraftForge.EVENT_BUS.register(new KeyInputHandler());
         MinecraftForge.EVENT_BUS.register(new WorldEventHandler());
         ClientRegistry.registerKeyBinding(toggleAimKey);
-        ConfigurationFile.reload();//重载配置
+        ConfigurationFile.reload();
         ClientCommandHandler.instance.registerCommand(new CommandCedarHelper());
-        AimSystem aimSystem = new AimSystem(ConfigurationFile.BlockIDs);
-        Thread aimSystemThread = new Thread(aimSystem);
-        aimSystemThread.start();
+        AimSystem aimSystem = new AimSystem();
+        aimSystem.start();
     }
     public static KeyBinding getToggleAimKey() {
         return toggleAimKey;
@@ -41,7 +40,7 @@ public class Main
         @SubscribeEvent
         public void onKeyInput(InputEvent.KeyInputEvent event) {
             if (toggleAimKey.isPressed()) {
-                AimSystem.toggleActive(); // Call method to toggle AimSystem
+                AimSystem.toggleActive();
             }
         }
     }
