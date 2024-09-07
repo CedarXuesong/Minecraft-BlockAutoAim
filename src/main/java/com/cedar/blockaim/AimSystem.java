@@ -82,7 +82,7 @@
                                 // 获取这个方块的最接近的暴露面
                                 Vec3 playerPos = new Vec3(player.posX, player.posY + player.getEyeHeight(), player.posZ);
                                 Vec3 closestFace = getClosestExposedFaceCenter(world, breakingBlockPos, player);
-                                if (closestFace != null && isPathClear(playerPos,closestFace, mc.theWorld)) {
+                                if (closestFace != null ) {
                                     closestBlockPos = breakingBlockPos;
                                     closestExposedFaceCenter = closestFace;
                                     //System.out.println("Break on breaking blocks");
@@ -140,6 +140,7 @@
                         if (distance > MAX_REACH_DISTANCE || !isPathClear(playerPos,closestExposedFaceCenter, mc.theWorld )){
                             closestBlockPos = null;
                             closestExposedFaceCenter = null;
+                            continue;
                         }
                         for (int id : ConfigurationFile.BlockIDs) {
                             if (block != Block.getBlockById(id)) {
