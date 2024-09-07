@@ -11,5 +11,4 @@
 ------------
 
 视频演示Video:
-https://www.bilibili.com/video/BV1qbpMevEvV
-"我的世界方块智能瞄准 1.8.9 CedarBlockAim R1.1.2"
+[我的世界方块智能辅助瞄准 1.8.9 CedarBlockAim R1.1.4](https://www.bilibili.com/video/BV1sTp4eYEDg)
