@@ -17,6 +17,7 @@ public class Main
     private ConfigurationFile configurationFile;
     public static final String MODID = "BlockAim";
     public static final String VERSION = "1.1.3";
+    public static final String VERSIONCODE = "20240907";
 
     @EventHandler
     public void load(FMLInitializationEvent event)

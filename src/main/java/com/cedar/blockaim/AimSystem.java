@@ -54,7 +54,7 @@ public class AimSystem {
             while (true) {
                 if (Thread.interrupted()) return;
                 try {
-                    Thread.sleep(50);  // 每 50 毫秒执行一次查找
+                    Thread.sleep(50);  // 每 100 毫秒执行一次查找
                 } catch (InterruptedException e) {
                     return;
                 }
@@ -133,10 +133,11 @@ public class AimSystem {
                     Vec3 playerPos = new Vec3(player.posX, player.posY + player.getEyeHeight(), player.posZ);
                     Vec3 targetPos = new Vec3(closestBlockPos.getX() + 0.5, closestBlockPos.getY() + 0.5, closestBlockPos.getZ() + 0.5);
                     double distance = playerPos.distanceTo(targetPos);
-
-                    if (block == Blocks.air || distance > MAX_REACH_DISTANCE) {
-                        closestBlockPos = null;
-                        closestExposedFaceCenter = null;
+                    for (int id : ConfigurationFile.BlockIDs) {
+                        if (block != Block.getBlockById(id) || distance > MAX_REACH_DISTANCE) {
+                            closestBlockPos = null;
+                            closestExposedFaceCenter = null;
+                        }
                     }
                 }
             }
@@ -144,72 +145,87 @@ public class AimSystem {
     }
 
 
-    // AimingThread负责平滑瞄准
     private class AimingThread implements Runnable {
         @Override
         public void run() {
-            Vec3 previousDirection = null;
-            long lastUpdateTime = System.currentTimeMillis(); // 记录上一次更新的时间
+            Vec3 previousDirection = null;  // 上一次的瞄准方向
+            long lastUpdateTime = System.currentTimeMillis();  // 上一次更新的时间
 
             while (true) {
                 if (Thread.interrupted()) return;
+
                 try {
                     Thread.sleep(1);  // 瞄准线程频繁更新
                 } catch (InterruptedException e) {
                     return;
                 }
 
-                if (mc.thePlayer == null || mc.theWorld == null || !isActive || closestExposedFaceCenter == null) {
+                if (mc.thePlayer == null || mc.theWorld == null || !isActive ||closestExposedFaceCenter == null) {
+                    try {
+                        Thread.sleep(50);  // 瞄准线程频繁更新
+                    } catch (InterruptedException e) {
+                        return;
+                    }
+                    lastUpdateTime = System.currentTimeMillis();  // 上一次更新的时间
                     continue;
                 }
 
                 EntityPlayerSP player = mc.thePlayer;
                 Vec3 playerPos = new Vec3(player.posX, player.posY + player.getEyeHeight(), player.posZ);
-                if (closestExposedFaceCenter != null) {
-                    Vec3 direction = closestExposedFaceCenter.subtract(playerPos).normalize();
-
-                    long currentTime = System.currentTimeMillis();
-                    double deltaTime = (currentTime - lastUpdateTime) / 1000.0; // 计算时间差，单位为秒
-                    lastUpdateTime = currentTime;
-
-                    // 缓动系数（使瞄准更平滑）
-                    double easeFactor = Math.min(deltaTime * AIM_SMOOTHNESS, 1.0); // 确保easeFactor在[0,1]之间
-
-                    double pitch = Math.toDegrees(Math.asin(-direction.yCoord));
-                    double yaw = Math.toDegrees(Math.atan2(direction.zCoord, direction.xCoord)) - 90.0;
-
-                    if (previousDirection != null) {
-                        double currentPitch = mc.thePlayer.rotationPitch;
-                        double currentYaw = mc.thePlayer.rotationYaw;
-
-                        // 平滑的 Pitch 和 Yaw
-                        double smoothedPitch = currentPitch + (pitch - currentPitch) * easeFactor;
-                        double smoothedYaw = smoothYawTransition(currentYaw, yaw, easeFactor);
-
-                        mc.thePlayer.rotationPitch = (float) smoothedPitch;
-                        mc.thePlayer.rotationYaw = (float) smoothedYaw;
-                    } else {
-                        // 如果是第一次瞄准，直接设置瞄准角度
-                        mc.thePlayer.rotationPitch = (float) pitch;
-                        mc.thePlayer.rotationYaw = (float) yaw;
-                    }
-
-                    previousDirection = direction;
+                Vec3 targetDirection;
+                try {
+                    targetDirection = closestExposedFaceCenter.subtract(playerPos).normalize();  // 新的目标方向
+                }catch (NullPointerException e){
+                    continue;
                 }
-                // 如果距离超出 MAX_REACH_DISTANCE，则停止瞄准
-                if (closestBlockPos != null) {
-                    Vec3 targetPos = new Vec3(closestBlockPos.getX() + 0.5, closestBlockPos.getY() + 0.5, closestBlockPos.getZ() + 0.5);
-                    double distance = playerPos.distanceTo(targetPos);
 
-                    // 如果距离超出 MAX_REACH_DISTANCE，停止瞄准
-                    if (distance > MAX_REACH_DISTANCE) {
-                        closestBlockPos = null;
-                        closestExposedFaceCenter = null;
-                    }
+
+                if (targetDirection == null) {
+                    //lastUpdateTime = System.currentTimeMillis();  // 上一次更新的时间
+                    continue;  // 确保 targetDirection 不为 null
                 }
+
+                long currentTime = System.currentTimeMillis();
+                double deltaTime = (currentTime - lastUpdateTime) / 1000.0;  // 时间差，以秒为单位
+                lastUpdateTime = currentTime;
+
+                // 缓动系数，控制瞄准平滑度
+                double easeFactor = Math.min(deltaTime * AIM_SMOOTHNESS, 1.0);  // 确保缓动系数在 [0, 1] 之间
+
+                // 如果是第一次瞄准，直接设置方向
+                if (previousDirection == null) {
+                    previousDirection = targetDirection;  // 初始化 previousDirection
+                }
+
+                // 逐渐调整方向，而不是立即跳到新目标
+                Vec3 smoothedDirection = new Vec3(
+                        previousDirection.xCoord + (targetDirection.xCoord - previousDirection.xCoord) * easeFactor,
+                        previousDirection.yCoord + (targetDirection.yCoord - previousDirection.yCoord) * easeFactor,
+                        previousDirection.zCoord + (targetDirection.zCoord - previousDirection.zCoord) * easeFactor
+                ).normalize();
+
+                // 计算 pitch 和 yaw 的平滑过渡
+                double pitch = Math.toDegrees(Math.asin(-smoothedDirection.yCoord));
+                double yaw = Math.toDegrees(Math.atan2(smoothedDirection.zCoord, smoothedDirection.xCoord)) - 90.0;
+
+                double currentPitch = player.rotationPitch;
+                double currentYaw = player.rotationYaw;
+
+                // 平滑的 Pitch 和 Yaw 过渡
+                double smoothedPitch = currentPitch + (pitch - currentPitch) * easeFactor;
+                double smoothedYaw = smoothYawTransition(currentYaw, yaw, easeFactor);
+
+                // 应用平滑后的角度
+                player.rotationPitch = (float) smoothedPitch;
+                player.rotationYaw = (float) smoothedYaw;
+
+                // 更新 previousDirection 为当前的平滑方向
+                previousDirection = smoothedDirection;
             }
         }
     }
+
+
 
     private boolean isFaceExposed(World world, BlockPos pos, int offsetX, int offsetY, int offsetZ) {
         BlockPos adjacentPos = pos.add(offsetX, offsetY, offsetZ);
