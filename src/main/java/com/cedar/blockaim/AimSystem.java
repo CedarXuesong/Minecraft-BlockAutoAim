@@ -126,6 +126,19 @@ public class AimSystem {
                     closestBlockPos = newClosestBlockPos;
                     closestExposedFaceCenter = newClosestExposedFaceCenter;
                 }
+
+                // 检查当前瞄准的方块是否超出 MAX_REACH_DISTANCE 或已经破坏
+                if (closestBlockPos != null) {
+                    Block block = world.getBlockState(closestBlockPos).getBlock();
+                    Vec3 playerPos = new Vec3(player.posX, player.posY + player.getEyeHeight(), player.posZ);
+                    Vec3 targetPos = new Vec3(closestBlockPos.getX() + 0.5, closestBlockPos.getY() + 0.5, closestBlockPos.getZ() + 0.5);
+                    double distance = playerPos.distanceTo(targetPos);
+
+                    if (block == Blocks.air || distance > MAX_REACH_DISTANCE) {
+                        closestBlockPos = null;
+                        closestExposedFaceCenter = null;
+                    }
+                }
             }
         }
     }
@@ -152,35 +165,48 @@ public class AimSystem {
 
                 EntityPlayerSP player = mc.thePlayer;
                 Vec3 playerPos = new Vec3(player.posX, player.posY + player.getEyeHeight(), player.posZ);
-                Vec3 direction = closestExposedFaceCenter.subtract(playerPos).normalize();
+                if (closestExposedFaceCenter != null) {
+                    Vec3 direction = closestExposedFaceCenter.subtract(playerPos).normalize();
 
-                long currentTime = System.currentTimeMillis();
-                double deltaTime = (currentTime - lastUpdateTime) / 1000.0; // 计算时间差，单位为秒
-                lastUpdateTime = currentTime;
+                    long currentTime = System.currentTimeMillis();
+                    double deltaTime = (currentTime - lastUpdateTime) / 1000.0; // 计算时间差，单位为秒
+                    lastUpdateTime = currentTime;
 
-                // 缓动系数（使瞄准更平滑）
-                double easeFactor = Math.min(deltaTime * AIM_SMOOTHNESS, 1.0); // 确保easeFactor在[0,1]之间
+                    // 缓动系数（使瞄准更平滑）
+                    double easeFactor = Math.min(deltaTime * AIM_SMOOTHNESS, 1.0); // 确保easeFactor在[0,1]之间
 
-                double pitch = Math.toDegrees(Math.asin(-direction.yCoord));
-                double yaw = Math.toDegrees(Math.atan2(direction.zCoord, direction.xCoord)) - 90.0;
+                    double pitch = Math.toDegrees(Math.asin(-direction.yCoord));
+                    double yaw = Math.toDegrees(Math.atan2(direction.zCoord, direction.xCoord)) - 90.0;
 
-                if (previousDirection != null) {
-                    double currentPitch = mc.thePlayer.rotationPitch;
-                    double currentYaw = mc.thePlayer.rotationYaw;
+                    if (previousDirection != null) {
+                        double currentPitch = mc.thePlayer.rotationPitch;
+                        double currentYaw = mc.thePlayer.rotationYaw;
 
-                    // 平滑的 Pitch 和 Yaw
-                    double smoothedPitch = currentPitch + (pitch - currentPitch) * easeFactor;
-                    double smoothedYaw = smoothYawTransition(currentYaw, yaw, easeFactor);
+                        // 平滑的 Pitch 和 Yaw
+                        double smoothedPitch = currentPitch + (pitch - currentPitch) * easeFactor;
+                        double smoothedYaw = smoothYawTransition(currentYaw, yaw, easeFactor);
 
-                    mc.thePlayer.rotationPitch = (float) smoothedPitch;
-                    mc.thePlayer.rotationYaw = (float) smoothedYaw;
-                } else {
-                    // 如果是第一次瞄准，直接设置瞄准角度
-                    mc.thePlayer.rotationPitch = (float) pitch;
-                    mc.thePlayer.rotationYaw = (float) yaw;
+                        mc.thePlayer.rotationPitch = (float) smoothedPitch;
+                        mc.thePlayer.rotationYaw = (float) smoothedYaw;
+                    } else {
+                        // 如果是第一次瞄准，直接设置瞄准角度
+                        mc.thePlayer.rotationPitch = (float) pitch;
+                        mc.thePlayer.rotationYaw = (float) yaw;
+                    }
+
+                    previousDirection = direction;
                 }
+                // 如果距离超出 MAX_REACH_DISTANCE，则停止瞄准
+                if (closestBlockPos != null) {
+                    Vec3 targetPos = new Vec3(closestBlockPos.getX() + 0.5, closestBlockPos.getY() + 0.5, closestBlockPos.getZ() + 0.5);
+                    double distance = playerPos.distanceTo(targetPos);
 
-                previousDirection = direction;
+                    // 如果距离超出 MAX_REACH_DISTANCE，停止瞄准
+                    if (distance > MAX_REACH_DISTANCE) {
+                        closestBlockPos = null;
+                        closestExposedFaceCenter = null;
+                    }
+                }
             }
         }
     }
@@ -192,77 +218,51 @@ public class AimSystem {
 
     private boolean hasFullyExposedFace(World world, BlockPos pos) {
         return isFaceExposed(world, pos, -1, 0, 0) || isFaceExposed(world, pos, 1, 0, 0) ||
-                isFaceExposed(world, pos, 0, 1, 0) || isFaceExposed(world, pos, 0, -1, 0) ||
-                isFaceExposed(world, pos, 0, 0, 1) || isFaceExposed(world, pos, 0, 0, -1);
+                isFaceExposed(world, pos, 0, -1, 0) || isFaceExposed(world, pos, 0, 1, 0) ||
+                isFaceExposed(world, pos, 0, 0, -1) || isFaceExposed(world, pos, 0, 0, 1);
     }
 
-    // Smooth yaw transition
-    private double smoothYawTransition(double currentYaw, double targetYaw, double smoothFactor) {
-        double yawDifference = calculateShortestYawDifference(currentYaw, targetYaw);
-        return currentYaw + yawDifference * smoothFactor;
-    }
-
-    // Shortest yaw difference
-    private double calculateShortestYawDifference(double currentYaw, double targetYaw) {
-        double yawDifference = targetYaw - currentYaw;
-        while (yawDifference < -180) yawDifference += 360;
-        while (yawDifference > 180) yawDifference -= 360;
-        return yawDifference;
-    }
-
-    // Exposed face centers
     private List<Vec3> getExposedFaceCenters(World world, BlockPos pos) {
         List<Vec3> exposedFaces = new ArrayList<>();
-
-        if (isFaceExposed(world, pos, -1, 0, 0)) { // 左侧面
-            exposedFaces.add(new Vec3(pos.getX(), pos.getY() + 0.5, pos.getZ() + 0.5));
-        }
-        if (isFaceExposed(world, pos, 1, 0, 0)) { // 右侧面
-            exposedFaces.add(new Vec3(pos.getX() + 1, pos.getY() + 0.5, pos.getZ() + 0.5));
-        }
-        if (isFaceExposed(world, pos, 0, 1, 0)) { // 顶面
-            exposedFaces.add(new Vec3(pos.getX() + 0.5, pos.getY() + 1, pos.getZ() + 0.5));
-        }
-        if (isFaceExposed(world, pos, 0, -1, 0)) { // 底面
-            exposedFaces.add(new Vec3(pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5));
-        }
-        if (isFaceExposed(world, pos, 0, 0, 1)) { // 前面
-            exposedFaces.add(new Vec3(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 1));
-        }
-        if (isFaceExposed(world, pos, 0, 0, -1)) { // 后面
-            exposedFaces.add(new Vec3(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ()));
-        }
-
+        if (isFaceExposed(world, pos, -1, 0, 0)) exposedFaces.add(new Vec3(pos.getX(), pos.getY() + 0.5, pos.getZ() + 0.5));
+        if (isFaceExposed(world, pos, 1, 0, 0)) exposedFaces.add(new Vec3(pos.getX() + 1, pos.getY() + 0.5, pos.getZ() + 0.5));
+        if (isFaceExposed(world, pos, 0, -1, 0)) exposedFaces.add(new Vec3(pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5));
+        if (isFaceExposed(world, pos, 0, 1, 0)) exposedFaces.add(new Vec3(pos.getX() + 0.5, pos.getY() + 1, pos.getZ() + 0.5));
+        if (isFaceExposed(world, pos, 0, 0, -1)) exposedFaces.add(new Vec3(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ()));
+        if (isFaceExposed(world, pos, 0, 0, 1)) exposedFaces.add(new Vec3(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 1));
         return exposedFaces;
     }
 
-    // 获取方块中离玩家最近的暴露面
     private Vec3 getClosestExposedFaceCenter(World world, BlockPos pos, EntityPlayerSP player) {
-        List<Vec3> exposedFaces = getExposedFaceCenters(world, pos);
-        if (exposedFaces.isEmpty()) return null;
-
         Vec3 playerPos = new Vec3(player.posX, player.posY + player.getEyeHeight(), player.posZ);
+        List<Vec3> exposedFaceCenters = getExposedFaceCenters(world, pos);
+
         Vec3 closestFace = null;
         double closestDistance = Double.MAX_VALUE;
-
-        // 遍历暴露面，找到距离玩家最近的暴露面
-        for (Vec3 face : exposedFaces) {
-            double distance = playerPos.distanceTo(face);
+        for (Vec3 faceCenter : exposedFaceCenters) {
+            double distance = playerPos.distanceTo(faceCenter);
             if (distance < closestDistance) {
                 closestDistance = distance;
-                closestFace = face;
+                closestFace = faceCenter;
             }
         }
-
-        return closestFace;  // 返回距离最近的暴露面
+        return closestFace;
     }
 
-    // Path clear check
-    private boolean isPathClear(Vec3 playerPos, Vec3 targetPos, World world) {
-        MovingObjectPosition rayTraceResult = world.rayTraceBlocks(playerPos, targetPos);
-        return rayTraceResult == null || rayTraceResult.typeOfHit == MovingObjectPosition.MovingObjectType.MISS;
+    private double smoothYawTransition(double currentYaw, double targetYaw, double easeFactor) {
+        double deltaYaw = targetYaw - currentYaw;
+
+        // 确保角度转换是最短路径
+        while (deltaYaw < -180.0) deltaYaw += 360.0;
+        while (deltaYaw > 180.0) deltaYaw -= 360.0;
+
+        return currentYaw + deltaYaw * easeFactor;
     }
 
+    private boolean isPathClear(Vec3 start, Vec3 end, World world) {
+        MovingObjectPosition result = world.rayTraceBlocks(start, end, false, true, false);
+        return result == null || result.typeOfHit == MovingObjectPosition.MovingObjectType.MISS;
+    }
     // Toggle active state
     public static void toggleActive() {
         isActive = !isActive;
@@ -273,4 +273,3 @@ public class AimSystem {
         }
     }
 }
-
