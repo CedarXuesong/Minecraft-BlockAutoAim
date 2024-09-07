@@ -1,5 +1,6 @@
     package com.cedar.blockaim;
 
+    import jdk.nashorn.internal.runtime.Debug;
     import net.minecraft.client.Minecraft;
     import net.minecraft.client.entity.EntityPlayerSP;
     import net.minecraft.util.BlockPos;
@@ -17,7 +18,6 @@
         private Minecraft mc;
         private static boolean isActive = false;
         private static final double MAX_REACH_DISTANCE = 5.0;
-        private static final double EASE_OUT_EXPO_EXPONENT = 10.0;
         public static double AIM_SMOOTHNESS = 0.3;
 
         private volatile BlockPos closestBlockPos = null;
@@ -62,7 +62,6 @@
                     if (mc.thePlayer == null || mc.theWorld == null || !isActive) {
                         continue;
                     }
-
                     EntityPlayerSP player = mc.thePlayer;
                     World world = mc.theWorld;
 
@@ -81,8 +80,9 @@
                         for (int id : ConfigurationFile.BlockIDs) {
                             if (blockID == id && hasFullyExposedFace(world, breakingBlockPos)) {
                                 // 获取这个方块的最接近的暴露面
+                                Vec3 playerPos = new Vec3(player.posX, player.posY + player.getEyeHeight(), player.posZ);
                                 Vec3 closestFace = getClosestExposedFaceCenter(world, breakingBlockPos, player);
-                                if (closestFace != null) {
+                                if (closestFace != null && isPathClear(playerPos,closestFace, mc.theWorld)) {
                                     closestBlockPos = breakingBlockPos;
                                     closestExposedFaceCenter = closestFace;
                                     //System.out.println("Break on breaking blocks");
@@ -137,8 +137,12 @@
                         Vec3 targetPos = new Vec3(closestBlockPos.getX() + 0.5, closestBlockPos.getY() + 0.5, closestBlockPos.getZ() + 0.5);
                         double distance = playerPos.distanceTo(targetPos);
                         int i = 0;
+                        if (distance > MAX_REACH_DISTANCE || !isPathClear(playerPos,closestExposedFaceCenter, mc.theWorld )){
+                            closestBlockPos = null;
+                            closestExposedFaceCenter = null;
+                        }
                         for (int id : ConfigurationFile.BlockIDs) {
-                            if (block != Block.getBlockById(id) || distance > MAX_REACH_DISTANCE) {
+                            if (block != Block.getBlockById(id)) {
                                 i++;
                             }
                             if (i>=ConfigurationFile.BlockIDs.length){

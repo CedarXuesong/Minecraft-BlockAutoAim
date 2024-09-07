@@ -20,7 +20,7 @@ plugins {
     id "net.minecraftforge.gradle.forge" version "2.0.2"
 }
 */
-version = "R1.1.4"
+version = "R1.1.5"
 group= "com.CedarXueSong.BlockAim" // http://maven.apache.org/guides/mini/guide-naming-conventions.html
 archivesBaseName = "BlockAim"
 sourceCompatibility = 1.8
