@@ -1,6 +1,8 @@
     package com.cedar.blockaim;
 
-    import jdk.nashorn.internal.runtime.Debug;
+    import com.sun.org.apache.bcel.internal.generic.GOTO;
+    import jdk.nashorn.internal.ir.annotations.Ignore;
+    import net.minecraft.block.state.IBlockState;
     import net.minecraft.client.Minecraft;
     import net.minecraft.client.entity.EntityPlayerSP;
     import net.minecraft.util.BlockPos;
@@ -13,6 +15,8 @@
 
     import java.util.ArrayList;
     import java.util.List;
+
+    import static com.cedar.blockaim.ConfigurationFile.IgnoreFeetBlocks;
 
     public class AimSystem {
         private Minecraft mc;
@@ -73,12 +77,11 @@
                     BlockPos breakingBlockPos = mc.objectMouseOver != null && mc.objectMouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK
                             ? mc.objectMouseOver.getBlockPos() : null;
 
-                    if (breakingBlockPos != null) {
-                        Block block = world.getBlockState(breakingBlockPos).getBlock();
-                        int blockID = Block.getIdFromBlock(block);
+                    if (breakingBlockPos != null && !(IgnoreFeetBlocks && (breakingBlockPos.getY() < player.posY))) {
+                        IBlockState block = world.getBlockState(breakingBlockPos);
 
-                        for (int id : ConfigurationFile.BlockIDs) {
-                            if (blockID == id && hasFullyExposedFace(world, breakingBlockPos)) {
+                        for (IBlockState names : ConfigurationFile.BlockNames) {
+                            if (block == names && hasFullyExposedFace(world, breakingBlockPos)) {
                                 // 获取这个方块的最接近的暴露面
                                 Vec3 playerPos = new Vec3(player.posX, player.posY + player.getEyeHeight(), player.posZ);
                                 Vec3 closestFace = getClosestExposedFaceCenter(world, breakingBlockPos, player);
@@ -94,15 +97,15 @@
 
                     // 如果没有找到正在被破坏的方块，继续遍历其他方块
                     if (closestBlockPos == null) {
-                        for (int x = (int) player.posX - 50; x < player.posX + 50; x++) {
-                            for (int y = (int) player.posY - 50; y < player.posY + 50; y++) {
-                                for (int z = (int) player.posZ - 50; z < player.posZ + 50; z++) {
+                        for (int x = (int) player.posX - 10; x < player.posX + 10; x++) {
+                            //同时忽略脚下方块
+                            for (int y = IgnoreFeetBlocks ? (int) player.posY : (int) player.posY - 10; y < player.posY + 10; y++) {
+                                for (int z = (int) player.posZ - 10; z < player.posZ + 10; z++) {
                                     BlockPos pos = new BlockPos(x, y, z);
-                                    Block block = world.getBlockState(pos).getBlock();
-                                    int blockID = Block.getIdFromBlock(block);
+                                    IBlockState block = world.getBlockState(pos);
 
-                                    for (int id : ConfigurationFile.BlockIDs) {
-                                        if (blockID == id && hasFullyExposedFace(world, pos)) {
+                                    for (IBlockState names : ConfigurationFile.BlockNames) {
+                                        if (block == names && hasFullyExposedFace(world, pos)) {
                                             Vec3 playerPos = new Vec3(player.posX, player.posY + player.getEyeHeight(), player.posZ);
 
                                             // 获取最接近的暴露面
@@ -132,7 +135,15 @@
 
                     // 检查当前瞄准的方块是否超出 MAX_REACH_DISTANCE 或已经破坏
                     if (closestBlockPos != null) {
-                        Block block = world.getBlockState(closestBlockPos).getBlock();
+
+                        //忽略脚下方块
+                        if (IgnoreFeetBlocks && closestBlockPos.getY()<player.posY){
+                            closestBlockPos = null;
+                            closestExposedFaceCenter = null;
+                            continue;
+                        }
+
+                        IBlockState block = world.getBlockState(closestBlockPos);
                         Vec3 playerPos = new Vec3(player.posX, player.posY + player.getEyeHeight(), player.posZ);
                         Vec3 targetPos = new Vec3(closestBlockPos.getX() + 0.5, closestBlockPos.getY() + 0.5, closestBlockPos.getZ() + 0.5);
                         double distance = playerPos.distanceTo(targetPos);
@@ -142,14 +153,14 @@
                             closestExposedFaceCenter = null;
                             continue;
                         }
-                        for (int id : ConfigurationFile.BlockIDs) {
-                            if (block != Block.getBlockById(id)) {
+                        for (IBlockState name : ConfigurationFile.BlockNames) {
+                            if (block != name) {
                                 i++;
                             }
-                            if (i>=ConfigurationFile.BlockIDs.length){
+                            if (i>=ConfigurationFile.BlockNames.length){
                                 closestBlockPos = null;
                                 closestExposedFaceCenter = null;
-                                //System.out.println("Set to null "+block+" "+Block.getBlockById(id));
+                                //System.out.println("Set to null "+block+" "+Block.getBlockById(name));
                             }
                         }
                     }

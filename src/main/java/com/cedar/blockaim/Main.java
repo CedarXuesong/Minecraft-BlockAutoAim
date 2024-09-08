@@ -16,13 +16,13 @@ public class Main
     public static KeyBinding toggleAimKey;
     private ConfigurationFile configurationFile;
     public static final String MODID = "BlockAim";
-    public static final String VERSION = "1.1.5";
-    public static final String VERSIONCODE = "20240908";
-
+    public static final String VERSION = "1.1.6";
+    public static final String VERSIONCODE = "20240908.2";
+    public static final String CFG_FILE_PATH = "config/cedar/config.cfg";
     @EventHandler
     public void load(FMLInitializationEvent event)
     {
-        ConfigurationFile.init("config/cedar/config.cfg");
+        ConfigurationFile.init(CFG_FILE_PATH);
         toggleAimKey = new KeyBinding("§eAimBlock", 0, "Cedar雪松的模组");
         MinecraftForge.EVENT_BUS.register(new CommandCedarHelper());
         MinecraftForge.EVENT_BUS.register(new KeyInputHandler());
