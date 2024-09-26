@@ -1,4 +1,5 @@
 # Minecraft AutoBlockAim 1.8.9Forge
+# 此项目已放弃维护，将会发布BlockAutoAimPro代替。
 ###### 我的世界方块自动瞄准器
 支持自动瞄准可视方块的面
 ```js
